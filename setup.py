@@ -12,7 +12,6 @@ setup(
 	# version: over-ridden by the release script
 	version = version,
 	packages = ["dls_serial_sim"],
-	package_dir = {	'dls_serial_sim': 'src'},
 	# define console_scripts to be 
 #	entry_points = {'console_scripts': ['test-python-hello-world = dls.serial_sim.serial_sim:main']},
 	include_package_data = True,
