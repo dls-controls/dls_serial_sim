@@ -358,7 +358,7 @@ class serial_device:
         print text
 
 
-def CreateSimulation(cls, *args, **kwargs):
+def CreateSimulation(cls, *pargs, **kwargs):
     '''Options parser for a serial_device. Takes a cls, instantiates it with
     any extra arguments, then uses the options parser to start ip, rpc and debug
     services on the device. Returns (ob, options, args)'''
@@ -368,7 +368,7 @@ def CreateSimulation(cls, *args, **kwargs):
     parser.add_option("-r", dest = "rpc", help = "Start an rpc port on PORT")    
     parser.add_option("-d", dest = "debug", help = "Start a debug port on PORT")    
     options, args = parser.parse_args()
-    ob = cls(*args, **kwargs)
+    ob = cls(*pargs, **kwargs)
     if options.ip:
         ob.start_ip(int(options.ip))
     if options.rpc:
