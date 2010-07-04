@@ -202,6 +202,22 @@ class serial_device:
             self.rpc_server.logger.quiet = quiet
             self.__daemon(self.rpc_server.start)
 
+    def start_no_io(self):
+        """Start the serial device with no I/O.  This is useful for simulations
+        that do not have I/O but want to take advantage of other serial_device
+        features."""
+        if self.started:
+            print "Server already started"
+        else:
+            self.inq, self.outq = Queue.Queue(), Queue.Queue()
+            self.started = True       
+            # store the request to respond to
+            self.outreq = None
+            # start to respond to any messages put on the outq
+            self.__daemon(self.__ip_out)
+            # start the worker thread
+            self.__daemon(self.__process)
+
     def listen(self,command):
         """Decide what to do with the command so far, return either command or
         tuple of new command and what to put on the queue. This method
