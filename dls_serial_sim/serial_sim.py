@@ -65,10 +65,14 @@ class serial_device:
     diagLevel = 0
     branches = None    
 
-    def __init__(self, protocolBranches=[], power = True):
+    def __init__(self, protocolBranches=[], power=True, ui=None):
         # Test framework support
         self.power = power
-        self.branches = protocolBranches    
+        self.branches = protocolBranches
+        self.ui = ui
+        self.diagLevel = 1
+        if self.ui is not None:
+            self.ui.declareSimulation(self)
 
     def __daemon(self,f):
         # create a daemon thread
@@ -319,7 +323,10 @@ class serial_device:
 
     def diagnostic(self, text, level):
         if self.diagLevel >= level:
-            print text
+            if self.ui is None:
+                print text
+            else:
+                self.ui.output(self, text)
 
     def clearCoverage(self):
         self.coverage = set()
@@ -372,6 +379,10 @@ class serial_device:
         framework is monitoring standard out.  One day, a proper protocol
         may be invented.'''
         print text
+
+    def createUi(self):
+        '''Override to create the user interface for the simulation.'''
+        return None
 
 
 def CreateSimulation(cls, *pargs, **kwargs):
