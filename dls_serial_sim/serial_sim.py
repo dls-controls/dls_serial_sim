@@ -69,10 +69,10 @@ class serial_device:
         # Test framework support
         self.power = power
         self.branches = protocolBranches
-        self.ui = ui
+        self.ui = None
         self.diagLevel = 1
-        if self.ui is not None:
-            self.ui.declareSimulation(self)
+        if ui is not None:
+            self.ui = ui.declareSimulation(self)
 
     def __daemon(self,f):
         # create a daemon thread
@@ -85,7 +85,7 @@ class serial_device:
         the server port. The slave port name is declared in an environment
         variable var, so drvAsynSerialPortConfigure should connect to $(var)"""
         if self.started:
-            print "Server already started"
+            self.diagnostic("Server already started")
         else:
             self.inq, self.outq = Queue.Queue(), Queue.Queue()
             self.started = True
@@ -124,7 +124,7 @@ class serial_device:
         drvAsynIPPortConfigure should connect to localhost:port if the
         simulation is on the same machine as the IOC."""
         if self.started:
-            print "Server already started"
+            self.diagnostic("Server already started")
         else:
             self.inq, self.outq = Queue.Queue(), Queue.Queue()
             self.started = True       
@@ -173,9 +173,9 @@ class serial_device:
         telnet localhost port
         in a terminal window."""
         if self.debug_started:
-            print "Debug server already started"        
+            self.diagnostic("Debug server already started")
         elif not self.started:
-            print "Start a serial server first"
+            self.diagnostic("Start a serial server first")
         else:
             self.debug_started = True
             self.debug_server = debug_server(port,self.inq,{"self":self})
@@ -191,9 +191,9 @@ class serial_device:
         conn = rpyc.classic.connect(hostname, port = port)
         sim = conn.root.simulation()"""
         if self.rpc_started:
-            print "RPC server already started"        
+            self.diagnostic("RPC server already started")
         elif not self.started:
-            print "Start a serial server first"
+            self.diagnostic("Start a serial server first")
         else:
             self.rpc_started = True
             from rpyc.utils.server import ThreadedServer
@@ -211,7 +211,7 @@ class serial_device:
         that do not have I/O but want to take advantage of other serial_device
         features."""
         if self.started:
-            print "Server already started"
+            self.diagnostic("Server already started")
         else:
             self.inq, self.outq = Queue.Queue(), Queue.Queue()
             self.started = True       
@@ -321,12 +321,12 @@ class serial_device:
         '''Set the current diagnostic level.'''
         self.diagLevel = int(level)
 
-    def diagnostic(self, text, level):
+    def diagnostic(self, text, level=0):
         if self.diagLevel >= level:
             if self.ui is None:
                 print text
             else:
-                self.ui.output(self, text)
+                self.ui.output(text + "\n")
 
     def clearCoverage(self):
         self.coverage = set()
