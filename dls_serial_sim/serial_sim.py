@@ -2,7 +2,7 @@
 
 import os, pty, sys, Queue, traceback, time, socket, types, traceback
 from threading import Thread
-from SocketServer import ThreadingTCPServer,BaseRequestHandler
+from SocketServer import ThreadingTCPServer,BaseRequestHandler,ThreadingUDPServer
 from debug_server import debug_server
 
 class scheduler:
@@ -71,6 +71,7 @@ class serial_device:
         self.branches = protocolBranches
         self.ui = None
         self.diagLevel = 1
+        self.udp = False
         if ui is not None:
             self.ui = ui.declareSimulation(self)
 
@@ -157,13 +158,52 @@ class serial_device:
             # start the worker thread
             self.__daemon(self.__process)
 
+    def start_udp(self,port):
+        """Create a UDP server and start listening for data. Put any input data
+        on the inq for listen to read, and send any data on the outq. The
+        drvAsynIPPortConfigure should connect to localhost:port if the
+        simulation is on the same machine as the IOC."""
+        if self.started:
+            self.diagnostic("Server already started")
+        else:
+            self.inq, self.outq = Queue.Queue(), Queue.Queue()
+            self.started = True
+            self.udp = True
+            # store the request to respond to
+            self.outreq = None
+            def MakeHandler(device):
+                # make a basic tcp handler that puts messages on a queue
+                class ProxyHandler(BaseRequestHandler):
+                    def setup(self):
+                        BaseRequestHandler.setup(self)
+                        device.onHandlerSetup(self)
+                    def finish(self):
+                        BaseRequestHandler.finish(self)
+                        device.onHandlerFinish(self)
+                    def handle(self):
+                        if self.request != None:
+                            data = "nothing yet"
+                            device.outreq = (self.request[1], self.client_address)
+                            device.inq.put(self.request[0])
+                return ProxyHandler
+            self.server = ThreadingUDPServer( ("", port), MakeHandler(self) )
+            # start to listen on the master port
+            self.__daemon(self.server.serve_forever)
+            # start to respond to any messages put on the outq
+            self.__daemon(self.__ip_out)
+            # start the worker thread
+            self.__daemon(self.__process)
+
     def __ip_out(self):
         "respond to the last requestor with anything in the out queue"
         while True:
             data = self.outq.get()
             if self.outreq!=None:
                 try:
-                    self.outreq.send(data)
+                    if self.udp:
+                        self.outreq[0].sendto(data, self.outreq[1])
+                    else:
+                        self.outreq.send(data)
                 except:
                     pass
 
@@ -273,6 +313,10 @@ class serial_device:
                                 self.outq.put(result+Terminator)                            
                             else:
                                 self.outq.put(result)
+                elif self.udp:
+                    response = self.reply(data)
+                    if response != None:
+                        self.outq.put(response)
                 else:
                     # it is a command to be processed
                     command += data
